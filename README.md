@@ -1,6 +1,6 @@
-`pusher_webman` is a not official pusher client for webman/push.
+# Pusher Webman Client for webman/push
 
-This client is work in progress.
+`pusher_webman` is a not official pusher client for webman/push.
 
 ## Usage
 
@@ -12,11 +12,11 @@ import 'package:pusher_webman/pusher_webman.dart';
 main() {
   final pusher = Pusher(
       url: 'ws://localhost:3131',
-      key: "ac824d4958a5fe8a9553b90c28560f91",
+      key: "APP-KEY",
       auth: PusherAuth('http://localhost/plugin/webman/push/auth'),
     );
   pusher.connect();
-  
+
   final channel = pusher.subscribe('channel');
   channel.bind('event', (event) {
     print('event: $event');
