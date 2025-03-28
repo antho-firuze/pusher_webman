@@ -1,0 +1,16 @@
+name: pusher_webman
+description: A pusher client for webman/push 
+version: 0.1.0
+homepage: https://github.com/antho-firuze/pusher_webman
+documentation: https://github.com/antho-firuze/pusher_webman/blob/main/README.md
+
+environment:
+  sdk: '>=2.12.0 <4.0.0'
+
+dev_dependencies:
+  test: ^1.25.2
+  mocktail: ^1.0.3
+  linter: ^1.30.0
+  lints: ^3.0.0
+dependencies:
+  http: ^0.13.6

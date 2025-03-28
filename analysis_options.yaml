@@ -1,0 +1,6 @@
+include: package:lints/recommended.yaml
+
+linter:
+  # A list of all available lints and their documentation is published at
+  # https://dart-lang.github.io/linter/lints/index.html.
+  rules:
