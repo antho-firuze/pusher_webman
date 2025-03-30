@@ -1,0 +1,2 @@
+/Users/rynestnetline/development/pusher_client_sample/android/app/.cxx/Debug/4b6h4pv1/x86_64/CMakeFiles/edit_cache.dir
+/Users/rynestnetline/development/pusher_client_sample/android/app/.cxx/Debug/4b6h4pv1/x86_64/CMakeFiles/rebuild_cache.dir

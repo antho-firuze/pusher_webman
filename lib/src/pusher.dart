@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:developer';
 
 import 'package:dio/dio.dart';
@@ -90,7 +91,6 @@ class Pusher {
     if (channelName.startsWith('private-')) {
       _privateChannel(_connection, channelName);
     } else if (channelName.startsWith('presence-')) {
-      log("userId: $userId", name: _kLogName);
       if (userId != null && userId.isNotEmpty) {
         _presenceChannel(_connection, channelName, userId: userId, userInfo: userInfo);
       } else {
@@ -114,7 +114,6 @@ class Pusher {
     globalCallback?.call(channelName, eventName, data);
 
     if (eventName == 'pusher_internal:subscription_succeeded') {
-      // log("Subscribe to [$channelName] is succeeded", name: _kLogName);
       log("[$channelName][subscription_succeeded] $data", name: _kLogName);
       channels[channelName]?.register = true;
       if (onSubscribed != null) onSubscribed!(channelName);
@@ -156,7 +155,7 @@ class Pusher {
       );
 
       if (response.statusCode == 200) {
-        final json = response.data;
+        final json = jsonDecode(response.data);
 
         if (json['auth'] != null) {
           final data = {
@@ -202,7 +201,7 @@ class Pusher {
       );
 
       if (response.statusCode == 200) {
-        final json = response.data;
+        final json = jsonDecode(response.data);
 
         if (json['auth'] != null) {
           final data = {
