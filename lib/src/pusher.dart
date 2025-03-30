@@ -58,7 +58,7 @@ class Pusher {
   void disconnect() => _connection.disconnect();
 
   void _onConnectionEstablish(data) {
-    for (var channel in channels.keys) {
+    for (var channel in channels.values) {
       _subscribe(channel);
     }
   }
@@ -69,23 +69,28 @@ class Pusher {
     if (channels.containsKey(channelName)) {
       channel = channels[channelName];
     } else {
-      channel = Channel(name: channelName);
+      channel = Channel(name: channelName, userId: userId, userInfo: userInfo);
       channels[channelName] = channel;
     }
 
     if (channel?.register == false) {
       if (_connection.socketId != null) {
-        _subscribe(channelName, userId: userId, userInfo: userInfo);
+        _subscribe(channel!);
       }
     }
 
     return channel!;
   }
 
-  void _subscribe(String channelName, {String? userId, Object? userInfo}) async {
+  void _subscribe(Channel channel) async {
+    String channelName = channel.name;
+    String? userId = channel.userId;
+    Object? userInfo = channel.userInfo;
+
     if (channelName.startsWith('private-')) {
       _privateChannel(_connection, channelName);
     } else if (channelName.startsWith('presence-')) {
+      log("userId: $userId", name: _kLogName);
       if (userId != null && userId.isNotEmpty) {
         _presenceChannel(_connection, channelName, userId: userId, userInfo: userInfo);
       } else {
@@ -109,7 +114,8 @@ class Pusher {
     globalCallback?.call(channelName, eventName, data);
 
     if (eventName == 'pusher_internal:subscription_succeeded') {
-      log("Subscribe to [$channelName] is succeeded", name: _kLogName);
+      // log("Subscribe to [$channelName] is succeeded", name: _kLogName);
+      log("[$channelName][subscription_succeeded] $data", name: _kLogName);
       channels[channelName]?.register = true;
       if (onSubscribed != null) onSubscribed!(channelName);
     }
@@ -188,7 +194,7 @@ class Pusher {
         "socket_id": conn.socketId ?? "",
       };
       payload['user_id'] = userId;
-      payload['user_info'] = userInfo ?? {"name":""};
+      payload['user_info'] = userInfo ?? {"name": ""};
       final response = await Dio().post(
         Uri.parse(auth!.endpoint).toString(),
         data: payload,

@@ -1,9 +1,15 @@
 typedef GlobalCallback = void Function(String eventName, dynamic data);
 
 class Channel {
-  Channel({required this.name});
+  Channel({
+    required this.name,
+    this.userId,
+    this.userInfo,
+  });
 
   final String name;
+  final String? userId;
+  final Object? userInfo;
 
   Map<String, Function(dynamic event)> eventCallbacks = {};
   GlobalCallback? globalCallback;
