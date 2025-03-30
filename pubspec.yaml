@@ -13,4 +13,4 @@ dev_dependencies:
   linter: ^1.30.0
   lints: ^3.0.0
 dependencies:
-  http: ^0.13.6
+  dio: ^5.8.0+1

@@ -1,10 +1,10 @@
-import 'dart:convert';
 import 'dart:developer';
 
-import 'package:http/http.dart' as http show post;
+import 'package:dio/dio.dart';
 import 'package:pusher_webman/pusher_webman.dart';
 
 typedef PusherGlobalCallback = void Function(String channelName, String eventName, dynamic data);
+const _kLogName = 'PusherWebman';
 
 class Pusher {
   final String url;
@@ -18,6 +18,8 @@ class Pusher {
   final Duration timeout;
   final PusherAuth? auth;
   final Function(ConnState state)? connectionState;
+  final Function(dynamic data)? onError;
+  final Function(String channelName)? onSubscribed;
 
   Pusher({
     required this.key,
@@ -30,15 +32,18 @@ class Pusher {
     this.pingInterval = const Duration(seconds: 30),
     this.timeout = const Duration(seconds: 10),
     this.connectionState,
+    this.onError,
+    this.onSubscribed,
   }) {
     _connection = connection ??
         Connection(
           url: "$url/app/$key?client=$client&version=$version&protocol=$protocol",
-          eventHandler: connectionHandler,
+          eventHandler: _connectionHandler,
           onConnectionEstablish: _onConnectionEstablish,
           pingInterval: pingInterval,
           timeout: timeout,
           connectionState: connectionState,
+          onError: onError,
         );
   }
 
@@ -52,30 +57,40 @@ class Pusher {
 
   void disconnect() => _connection.disconnect();
 
-  void _onConnectionEstablish() {
+  void _onConnectionEstablish(data) {
     for (var channel in channels.keys) {
       _subscribe(channel);
     }
   }
 
-  Channel subscribe(String channelName) {
+  Channel subscribe(String channelName, {String? userId, Object? userInfo}) {
+    Channel? channel;
+
     if (channels.containsKey(channelName)) {
-      final channel = channels[channelName];
-      return channel!;
+      channel = channels[channelName];
+    } else {
+      channel = Channel(name: channelName);
+      channels[channelName] = channel;
     }
 
-    final channel = Channel(name: channelName);
-    channels[channelName] = channel;
-    return channel;
+    if (channel?.register == false) {
+      if (_connection.socketId != null) {
+        _subscribe(channelName, userId: userId, userInfo: userInfo);
+      }
+    }
+
+    return channel!;
   }
 
-  void _subscribe(String channelName) async {
-    if (channelName.startsWith('private-encrypted-')) {
-      _privateEncryptedChannel(_connection, channelName);
-    } else if (channelName.startsWith('private-')) {
+  void _subscribe(String channelName, {String? userId, Object? userInfo}) async {
+    if (channelName.startsWith('private-')) {
       _privateChannel(_connection, channelName);
     } else if (channelName.startsWith('presence-')) {
-      _presenceChannel(_connection, channelName);
+      if (userId != null && userId.isNotEmpty) {
+        _presenceChannel(_connection, channelName, userId: userId, userInfo: userInfo);
+      } else {
+        log("Error: $channelName is required [userId]", name: _kLogName);
+      }
     } else {
       _publicChannel(_connection, channelName);
     }
@@ -89,13 +104,15 @@ class Pusher {
     }
   }
 
-  void connectionHandler(
-    String eventName,
-    String channelName,
-    Map<String, dynamic> data,
-  ) {
+  void _connectionHandler(String eventName, String channelName, Map<String, dynamic> data) {
     channels[channelName]?.handleEvent(eventName, data);
     globalCallback?.call(channelName, eventName, data);
+
+    if (eventName == 'pusher_internal:subscription_succeeded') {
+      log("Subscribe to [$channelName] is succeeded", name: _kLogName);
+      channels[channelName]?.register = true;
+      if (onSubscribed != null) onSubscribed!(channelName);
+    }
   }
 
   void bindGlobal(PusherGlobalCallback callback) {
@@ -120,25 +137,20 @@ class Pusher {
     );
   }
 
-  void _privateEncryptedChannel(Connection conn, String channelName) {
-    final data = {'channel': channelName};
-    conn.sendEvent('pusher:subscribe', data);
-  }
-
   void _privateChannel(Connection conn, String channelName) async {
     try {
       final payload = {
         "channel_name": channelName,
         "socket_id": conn.socketId,
       };
-      final response = await http.post(
-        Uri.parse(auth!.endpoint),
-        body: payload,
-        headers: auth!.headers,
+      final response = await Dio().post(
+        Uri.parse(auth!.endpoint).toString(),
+        data: payload,
+        options: Options(headers: auth!.headers),
       );
 
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
+        final json = response.data;
 
         if (json['auth'] != null) {
           final data = {
@@ -146,8 +158,8 @@ class Pusher {
             "auth": json['auth'],
           };
           conn.sendEvent('pusher:subscribe', data);
+          return;
         }
-        return;
       }
 
       throw Exception('Unable to authenticate channel $channelName, status code: ${response.statusCode}');
@@ -160,53 +172,41 @@ class Pusher {
   //    "event":"pusher:subscribe",
   //    "data":
   //    {
+  //      "channel":"presence-channel",
   //      "auth":"b054014693241bcd9c26:10e3b628cb78e8bc4d1f44d47c9294551b446ae6ec10ef113d3d7e84e99763e6",
   //      "channel_data":
   //      {
   //        "user_id":100,
-  //        "user_info":{"name":"123"},
-  //      },
-  //      "channel":"presence-channel",
+  //        "user_info":{"name":"123"}
+  //      }
   //    },
   // }
-  void _presenceChannel(Connection conn, String channelName) async {
+  void _presenceChannel(Connection conn, String channelName, {required String userId, Object? userInfo}) async {
     try {
-      final payload = {
+      Map<String, dynamic> payload = {
         "channel_name": channelName,
-        "socket_id": conn.socketId,
+        "socket_id": conn.socketId ?? "",
       };
-      payload['channel_data'] = jsonEncode({
-        "user_id": 1,
-        "user_info": {
-          "name": "User Satu",
-        },
-      });
-      final response = await http.post(
-        Uri.parse(auth!.endpoint),
-        body: payload,
-        headers: auth!.headers,
+      payload['user_id'] = userId;
+      payload['user_info'] = userInfo ?? {"name":""};
+      final response = await Dio().post(
+        Uri.parse(auth!.endpoint).toString(),
+        data: payload,
+        options: Options(headers: auth!.headers),
       );
 
-      // log('response.statusCode : ${response.statusCode}', name: 'PUSHER');
-      // log('response.body : ${response.body}', name: 'PUSHER');
-
       if (response.statusCode == 200) {
-        final json = jsonDecode(response.body);
+        final json = response.data;
 
         if (json['auth'] != null) {
           final data = {
             "channel": channelName,
             "auth": json['auth'],
+            "channel_data": json['channel_data'],
           };
-          data['channel_data'] = jsonEncode({
-            "user_id": 1,
-            "user_info": {
-              "name": "User Satu",
-            },
-          });
           conn.sendEvent('pusher:subscribe', data);
+          return;
         }
-        return;
       }
 
       throw Exception('Unable to authenticate channel $channelName, status code: ${response.statusCode}');

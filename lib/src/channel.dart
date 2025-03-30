@@ -4,9 +4,11 @@ class Channel {
   Channel({required this.name});
 
   final String name;
+
   Map<String, Function(dynamic event)> eventCallbacks = {};
   GlobalCallback? globalCallback;
   Map<String, GlobalCallback> namedGlobalCallbacks = {};
+  bool register = false;
 
   void bind(String eventName, Function(dynamic event) callback) {
     eventCallbacks[eventName] = callback;

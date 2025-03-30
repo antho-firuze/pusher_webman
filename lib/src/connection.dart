@@ -22,6 +22,8 @@ class Connection {
     this.timeout = const Duration(seconds: 10),
     this.connectionState,
     this.onConnectionEstablish,
+    this.onPong,
+    this.onError,
   }) {
     bind('pusher:connection_established', _connectHandler);
     bind('pusher:pong', _pongHandler);
@@ -29,12 +31,14 @@ class Connection {
   }
 
   final String url;
-  final EventHandler eventHandler;
   final Duration pingInterval;
   final Duration reconnectInterval;
   final Duration timeout;
+  final EventHandler eventHandler;
   final Function(ConnState state)? connectionState;
-  final Function()? onConnectionEstablish;
+  final Function(dynamic data)? onConnectionEstablish;
+  final Function(dynamic data)? onPong;
+  final Function(dynamic data)? onError;
 
   final Map<String, Function(dynamic event)> _eventCallbacks = {};
   WebSocket? _socket;
@@ -49,32 +53,27 @@ class Connection {
     socketId = json['socket_id'];
 
     _updateState(ConnState.connected);
-    if (onConnectionEstablish != null) onConnectionEstablish!();
+    if (onConnectionEstablish != null) onConnectionEstablish!(data);
   }
 
   void _pongHandler(data) {
     log('Pong received', name: _kLogName);
-  }
-
-  void reconnect() {
-    log('reconnecting', name: _kLogName);
-    _pongTimer?.cancel();
-    _socket?.close();
-    _socket = null;
-    connect();
+    if (onPong != null) onPong!(data);
   }
 
   void _pusherErrorHandler(data) {
+    if (onError != null) onError!(data);
     try {
       if (data is Map && data.containsKey('code')) {
         final code = data['code'];
         if (code != null && code >= 4200 && code < 4300) {
-          reconnect();
           log('Trying to reconnect after error $code', name: _kLogName);
+          reconnect();
+        } else {
+          log('Received pusher:error: $data', name: _kLogName);
         }
       } else {
         log('Received pusher:error without code: $data', name: _kLogName);
-        _updateState(ConnState.disconnected);
       }
     } catch (e, s) {
       log('Could not handle connection error', error: e, stackTrace: s, name: _kLogName);
@@ -83,6 +82,14 @@ class Connection {
 
   void bind(String eventName, Function(dynamic event) callback) {
     _eventCallbacks[eventName] = callback;
+  }
+
+  void reconnect() {
+    log('reconnecting', name: _kLogName);
+    _pongTimer?.cancel();
+    _socket?.close();
+    _socket = null;
+    connect();
   }
 
   void disconnect() {
