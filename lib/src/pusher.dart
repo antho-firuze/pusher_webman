@@ -18,6 +18,7 @@ class Pusher {
   final Duration pingInterval;
   final Duration timeout;
   final PusherAuth? auth;
+  final bool showLog;
   final Function(ConnState state)? connectionState;
   final Function(dynamic data)? onError;
   final Function(String channelName)? onSubscribed;
@@ -35,6 +36,7 @@ class Pusher {
     this.connectionState,
     this.onError,
     this.onSubscribed,
+    this.showLog = false,
   }) {
     _connection = connection ??
         Connection(
@@ -45,6 +47,7 @@ class Pusher {
           timeout: timeout,
           connectionState: connectionState,
           onError: onError,
+          showLog: showLog,
         );
   }
 
@@ -94,7 +97,9 @@ class Pusher {
       if (userId != null && userId.isNotEmpty) {
         _presenceChannel(_connection, channelName, userId: userId, userInfo: userInfo);
       } else {
-        log("Error: $channelName is required [userId]", name: _kLogName);
+        final message = "Error: $channelName is required [userId]";
+        if (showLog) log(message, name: _kLogName);
+        throw Exception(message);
       }
     } else {
       _publicChannel(_connection, channelName);
@@ -114,7 +119,7 @@ class Pusher {
     globalCallback?.call(channelName, eventName, data);
 
     if (eventName == 'pusher_internal:subscription_succeeded') {
-      log("[$channelName][subscription_succeeded] $data", name: _kLogName);
+      if (showLog) log("[$channelName][subscription_succeeded] $data", name: _kLogName);
       channels[channelName]?.register = true;
       if (onSubscribed != null) onSubscribed!(channelName);
     }

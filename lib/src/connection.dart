@@ -24,6 +24,7 @@ class Connection {
     this.onConnectionEstablish,
     this.onPong,
     this.onError,
+    this.showLog = false,
   }) {
     bind('pusher:connection_established', _connectHandler);
     bind('pusher:pong', _pongHandler);
@@ -34,6 +35,7 @@ class Connection {
   final Duration pingInterval;
   final Duration reconnectInterval;
   final Duration timeout;
+  final bool showLog;
   final EventHandler eventHandler;
   final Function(ConnState state)? connectionState;
   final Function(dynamic data)? onConnectionEstablish;
@@ -47,7 +49,7 @@ class Connection {
   String? socketId;
 
   void _connectHandler(data) {
-    log('Established first connection: $data', name: _kLogName);
+    if (showLog) log('Established first connection: $data', name: _kLogName);
 
     final json = jsonDecode(data);
     socketId = json['socket_id'];
@@ -57,7 +59,7 @@ class Connection {
   }
 
   void _pongHandler(data) {
-    log('Pong received', name: _kLogName);
+    if (showLog) log('Pong received', name: _kLogName);
     if (onPong != null) onPong!(data);
   }
 
@@ -67,16 +69,18 @@ class Connection {
       if (data is Map && data.containsKey('code')) {
         final code = data['code'];
         if (code != null && code >= 4200 && code < 4300) {
-          log('Trying to reconnect after error $code', name: _kLogName);
+          if (showLog) log('Trying to reconnect after error $code', name: _kLogName);
           reconnect();
         } else {
-          log('Received pusher:error: $data', name: _kLogName);
+          if (showLog) log('Received pusher:error: $data', name: _kLogName);
         }
       } else {
-        log('Received pusher:error without code: $data', name: _kLogName);
+        if (showLog) log('Received pusher:error without code: $data', name: _kLogName);
       }
     } catch (e, s) {
-      log('Could not handle connection error', error: e, stackTrace: s, name: _kLogName);
+      final message = "Could not handle connection error";
+      if (showLog) log(message, error: e, stackTrace: s, name: _kLogName);
+      throw Exception(message);
     }
   }
 
@@ -85,7 +89,7 @@ class Connection {
   }
 
   void reconnect() {
-    log('reconnecting', name: _kLogName);
+    if (showLog) log('reconnecting', name: _kLogName);
     _pongTimer?.cancel();
     _socket?.close();
     _socket = null;
@@ -108,7 +112,9 @@ class Connection {
       _socket?.listen(onMessage);
       _resetCheckPong();
     } catch (e, _) {
-      log('Connection error : \n$e', name: _kLogName);
+      final message = "Connection error : \n$e";
+      if (showLog) log(message, name: _kLogName);
+      throw Exception(message);
     }
     _checkConnection();
   }
@@ -118,7 +124,7 @@ class Connection {
     if (_socket == null) {
       // Delayed
       await Future.delayed(reconnectInterval);
-      log('Internet connection is not established', name: _kLogName);
+      if (showLog) log('Internet connection is not established', name: _kLogName);
       reconnect();
       return;
     }
@@ -126,7 +132,7 @@ class Connection {
     _connTimer?.cancel();
     _connTimer = Timer.periodic(Duration(seconds: 1), (_) async {
       if (_socket?.closeCode != null) {
-        log('Connection closed with code [${_socket?.closeCode}]', name: _kLogName);
+        if (showLog) log('Connection closed with code [${_socket?.closeCode}]', name: _kLogName);
         _connTimer?.cancel();
         reconnect();
       }
@@ -147,7 +153,9 @@ class Connection {
         _eventCallbacks[json['event']]?.call(json['data'] ?? {});
       }
     } catch (e, s) {
-      log('Unable to handle onMessage', error: e, stackTrace: s, name: _kLogName);
+      final message = "Unable to handle onMessage";
+      if (showLog) log(message, error: e, stackTrace: s, name: _kLogName);
+      throw Exception(message);
     }
   }
 
@@ -168,17 +176,19 @@ class Connection {
 
       _socket?.add(jsonEncode(event));
     } catch (e, s) {
-      log('Unable to send event $eventName to channel $channelName', error: e, stackTrace: s, name: _kLogName);
+      final message = "Unable to send event $eventName to channel $channelName";
+      if (showLog) log(message, error: e, stackTrace: s, name: _kLogName);
+      throw Exception(message);
     }
   }
 
   void sendPing() {
     sendEvent('pusher:ping', {'data': ''});
-    log('Ping sent', name: _kLogName);
+    if (showLog) log('Ping sent', name: _kLogName);
   }
 
   void _updateState(ConnState state) {
-    log('Connection state : ${state.name}', name: _kLogName);
+    if (showLog) log('Connection state : ${state.name}', name: _kLogName);
     if (connectionState != null) connectionState!(state);
   }
 }
