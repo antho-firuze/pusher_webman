@@ -19,7 +19,7 @@ class Connection {
     required this.eventHandler,
     this.pingInterval = const Duration(seconds: 30),
     this.reconnectInterval = const Duration(seconds: 3),
-    this.timeout = const Duration(seconds: 10),
+    this.timeout,
     this.connectionState,
     this.onConnectionEstablish,
     this.onPong,
@@ -34,7 +34,7 @@ class Connection {
   final String url;
   final Duration pingInterval;
   final Duration reconnectInterval;
-  final Duration timeout;
+  final Duration? timeout;
   final bool showLog;
   final EventHandler eventHandler;
   final Function(ConnState state)? connectionState;
@@ -106,9 +106,16 @@ class Connection {
   void connect() async {
     _updateState(ConnState.connecting);
     try {
-      _socket = await WebSocket.connect(url).timeout(timeout, onTimeout: () {
-        throw Exception('Connection timeout');
-      });
+      if (timeout == null) {
+        _socket = await WebSocket.connect(url);
+      } else {
+        _socket = await WebSocket.connect(url).timeout(timeout!, onTimeout: () {
+          final seconds = timeout!.inSeconds;
+          final message = 'Connection timeout : [$seconds] seconds';
+          if (showLog) log(message, name: _kLogName);
+          throw Exception(message);
+        });
+      }
       _socket?.listen(onMessage);
       _resetCheckPong();
     } catch (e, _) {

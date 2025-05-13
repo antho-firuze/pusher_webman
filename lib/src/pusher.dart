@@ -16,7 +16,7 @@ class Pusher {
   final int protocol = 6;
   final Connection? connection;
   final Duration pingInterval;
-  final Duration timeout;
+  final Duration? timeout;
   final PusherAuth? auth;
   final bool showLog;
   final Function(ConnState state)? connectionState;
@@ -32,7 +32,7 @@ class Pusher {
     this.version = '0.6.0',
     this.connection,
     this.pingInterval = const Duration(seconds: 30),
-    this.timeout = const Duration(seconds: 10),
+    this.timeout,
     this.connectionState,
     this.onError,
     this.onSubscribed,
