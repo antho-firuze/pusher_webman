@@ -22,6 +22,7 @@ class Pusher {
   final Function(ConnState state)? connectionState;
   final Function(dynamic data)? onError;
   final Function(String channelName)? onSubscribed;
+  final Function(String channelName)? onUnsubscribed;
 
   Pusher({
     required this.key,
@@ -36,6 +37,7 @@ class Pusher {
     this.connectionState,
     this.onError,
     this.onSubscribed,
+    this.onUnsubscribed,
     this.showLog = false,
   }) {
     _connection = connection ??
@@ -111,6 +113,7 @@ class Pusher {
       final data = {'channel': channelName};
       channels.remove(channelName);
       _connection.sendEvent('pusher:unsubscribe', data);
+      if (onUnsubscribed != null) onUnsubscribed!(channelName);
     }
   }
 
@@ -122,6 +125,8 @@ class Pusher {
       if (showLog) log("[$channelName][subscription_succeeded] $data", name: _kLogName);
       channels[channelName]?.register = true;
       if (onSubscribed != null) onSubscribed!(channelName);
+    } else if (eventName == 'pusher_internal:member_removed') {
+      if (showLog) log("[$channelName][member_removed] $data", name: _kLogName);
     }
   }
 
