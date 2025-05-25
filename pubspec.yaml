@@ -1,6 +1,6 @@
 name: pusher_webman
 description: A pusher client for webman/push 
-version: 0.1.0
+version: 0.1.1
 homepage: https://github.com/antho-firuze/pusher_webman
 documentation: https://github.com/antho-firuze/pusher_webman/blob/main/README.md
 

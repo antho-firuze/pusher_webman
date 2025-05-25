@@ -103,7 +103,7 @@ class Connection {
     _updateState(ConnState.disconnected);
   }
 
-  void connect() async {
+  Future connect() async {
     _updateState(ConnState.connecting);
     try {
       if (timeout == null) {
@@ -118,10 +118,8 @@ class Connection {
       }
       _socket?.listen(onMessage);
       _resetCheckPong();
-    } catch (e, _) {
-      final message = "Connection error : \n$e";
-      if (showLog) log(message, name: _kLogName);
-      throw Exception(message);
+    } catch (e) {
+      rethrow;
     }
     _checkConnection();
   }

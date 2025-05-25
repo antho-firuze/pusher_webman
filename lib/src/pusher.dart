@@ -59,7 +59,13 @@ class Pusher {
 
   Connection? get getConnection => _connection;
 
-  void connect() => _connection.connect();
+  Future connect() async {
+    try {
+      await _connection.connect();
+    } catch (e) {
+      rethrow;
+    }
+  }
 
   void disconnect() => _connection.disconnect();
 
