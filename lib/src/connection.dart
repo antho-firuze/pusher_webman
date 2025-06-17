@@ -118,10 +118,11 @@ class Connection {
       }
       _socket?.listen(onMessage);
       _resetCheckPong();
+      _checkConnection();
     } catch (e) {
-      rethrow;
+      log("Error : connect => trying to connecting !", error: e, name: _kLogName);
+      await Future.delayed(Duration(seconds: 5), () => connect());
     }
-    _checkConnection();
   }
 
   void _checkConnection() async {

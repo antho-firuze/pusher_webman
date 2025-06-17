@@ -23,6 +23,7 @@ class Pusher {
   final Function(dynamic data)? onError;
   final Function(String channelName)? onSubscribed;
   final Function(String channelName)? onUnsubscribed;
+  final Function(dynamic data)? onPong;
 
   Pusher({
     required this.key,
@@ -39,6 +40,7 @@ class Pusher {
     this.onSubscribed,
     this.onUnsubscribed,
     this.showLog = false,
+    this.onPong,
   }) {
     _connection = connection ??
         Connection(
@@ -50,6 +52,7 @@ class Pusher {
           connectionState: connectionState,
           onError: onError,
           showLog: showLog,
+          onPong: onPong,
         );
   }
 
