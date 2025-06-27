@@ -54,17 +54,17 @@ class Connection {
     final json = jsonDecode(data);
     socketId = json['socket_id'];
 
-    _updateState(ConnState.connected);
-    if (onConnectionEstablish != null) onConnectionEstablish!(data);
+    connectionState?.call(ConnState.connected);
+    onConnectionEstablish?.call(data);
   }
 
   void _pongHandler(data) {
     if (showLog) log('Pong received', name: _kLogName);
-    if (onPong != null) onPong!(data);
+    onPong?.call(data);
   }
 
   void _pusherErrorHandler(data) {
-    if (onError != null) onError!(data);
+    onError?.call(data);
     try {
       if (data is Map && data.containsKey('code')) {
         final code = data['code'];
@@ -100,11 +100,11 @@ class Connection {
     _pongTimer?.cancel();
     _connTimer?.cancel();
     _socket?.close();
-    _updateState(ConnState.disconnected);
+    connectionState?.call(ConnState.disconnected);
   }
 
   Future connect() async {
-    _updateState(ConnState.connecting);
+    connectionState?.call(ConnState.connecting);
     try {
       if (timeout == null) {
         _socket = await WebSocket.connect(url);
@@ -191,10 +191,5 @@ class Connection {
   void sendPing() {
     sendEvent('pusher:ping', {'data': ''});
     if (showLog) log('Ping sent', name: _kLogName);
-  }
-
-  void _updateState(ConnState state) {
-    if (showLog) log('Connection state : ${state.name}', name: _kLogName);
-    if (connectionState != null) connectionState!(state);
   }
 }

@@ -122,7 +122,7 @@ class Pusher {
       final data = {'channel': channelName};
       channels.remove(channelName);
       _connection.sendEvent('pusher:unsubscribe', data);
-      if (onUnsubscribed != null) onUnsubscribed!(channelName);
+      onUnsubscribed?.call(channelName);
     }
   }
 
@@ -133,7 +133,7 @@ class Pusher {
     if (eventName == 'pusher_internal:subscription_succeeded') {
       if (showLog) log("[$channelName][subscription_succeeded] $data", name: _kLogName);
       channels[channelName]?.register = true;
-      if (onSubscribed != null) onSubscribed!(channelName);
+      onSubscribed?.call(channelName);
     } else if (eventName == 'pusher_internal:member_removed') {
       if (showLog) log("[$channelName][member_removed] $data", name: _kLogName);
     }
@@ -213,11 +213,8 @@ class Pusher {
       };
       payload['user_id'] = userId;
       payload['user_info'] = userInfo ?? {"name": ""};
-      final response = await Dio().post(
-        Uri.parse(auth!.endpoint).toString(),
-        data: payload,
-        options: Options(headers: auth!.headers),
-      );
+      final response = await Dio()
+          .post(Uri.parse(auth!.endpoint).toString(), data: payload, options: Options(headers: auth!.headers));
 
       if (response.statusCode == 200) {
         final json = jsonDecode(response.data);
